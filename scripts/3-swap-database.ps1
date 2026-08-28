@@ -33,6 +33,14 @@
 .PARAMETER ConnectionString
     Firebird connection string for the live database, used for the sanity check.
 
+.PARAMETER Credential
+    Firebird credentials as a PSCredential, used only for the optional sanity
+    check. If -SanityCheckQuery is given and this is omitted, you'll be
+    prompted (username defaults to SYSDBA). NOTE: isql.exe only accepts a
+    plaintext password as a command-line argument, so the password is
+    necessarily visible in this process's command line for its lifetime --
+    there is no way around that with isql itself.
+
 .NOTES
     Known gotcha (Firebird Classic Server): stopping the Firebird service does not
     always kill already-running per-connection worker processes, which can leave
@@ -59,8 +67,7 @@ param(
     [string]$SanityCheckQuery = $null,
     [string]$FirebirdBin = $null,
     [string]$ConnectionString = $null,
-    [string]$User = "SYSDBA",
-    [string]$Password = "masterkey"
+    [System.Management.Automation.PSCredential]$Credential
 )
 
 $ErrorActionPreference = "Stop"
@@ -152,7 +159,12 @@ Log "Swap complete. Old size: $([math]::Round($oldSize/1GB,2)) GB -> New size: $
 
 if ($SanityCheckQuery -and $FirebirdBin -and $ConnectionString) {
     Log "=== Sanity check: querying restored database ==="
-    $checkOut = $SanityCheckQuery | & (Join-Path $FirebirdBin "isql.exe") -user $User -password $Password $ConnectionString -q 2>&1
+    if (-not $Credential) {
+        $Credential = Get-Credential -UserName "SYSDBA" -Message "Firebird credentials for $ConnectionString"
+    }
+    $fbUser = $Credential.UserName
+    $fbPassword = $Credential.GetNetworkCredential().Password
+    $checkOut = $SanityCheckQuery | & (Join-Path $FirebirdBin "isql.exe") -user $fbUser -password $fbPassword $ConnectionString -q 2>&1
     Log "Sanity check output: $checkOut"
 }
 

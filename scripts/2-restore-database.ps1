@@ -26,10 +26,17 @@
 .PARAMETER LiveDatabasePath
     Path to the current live .FDB, used only to print a size comparison at the end.
 
+.PARAMETER Credential
+    Firebird credentials as a PSCredential. If omitted, you'll be prompted
+    (username defaults to SYSDBA). NOTE: gbak.exe only accepts a plaintext
+    password as a command-line argument, so the password is necessarily
+    visible in this process's command line for its lifetime -- there is no
+    way around that with gbak itself.
+
 .EXAMPLE
     .\2-restore-database.ps1 `
         -FirebirdBin "D:\Medoc\Firebird" `
-        -BackupFile "D:\Medoc\db\backup_20260709_180000\backup.FBK" `
+        -BackupFile "D:\Medoc\db\backup_YYYYMMDD_HHMMSS\backup.FBK" `
         -RestoreDbPath "E:\restore\db_new.FDB" `
         -RestoreConnectionString "localhost/3050:E:\restore\db_new.FDB" `
         -LiveDatabasePath "D:\Medoc\db\ZVIT.FDB"
@@ -41,11 +48,16 @@ param(
     [Parameter(Mandatory = $true)] [string]$RestoreDbPath,
     [Parameter(Mandatory = $true)] [string]$RestoreConnectionString,
     [string]$LiveDatabasePath,
-    [string]$User = "SYSDBA",
-    [string]$Password = "masterkey"
+    [System.Management.Automation.PSCredential]$Credential
 )
 
 $ErrorActionPreference = "Stop"
+
+if (-not $Credential) {
+    $Credential = Get-Credential -UserName "SYSDBA" -Message "Firebird credentials for $RestoreConnectionString"
+}
+$fbUser = $Credential.UserName
+$fbPassword = $Credential.GetNetworkCredential().Password
 
 $bkDir    = Split-Path $BackupFile -Parent
 $gbakLog  = Join-Path $bkDir "gbak_restore.log"
@@ -75,7 +87,7 @@ Log "=== Starting gbak -c (verbose) $BackupFile -> $RestoreDbPath ==="
 Log "Firebird server stays running the whole time; the live database is untouched."
 
 $proc = Start-Process -FilePath (Join-Path $FirebirdBin "gbak.exe") `
-    -ArgumentList @("-c", "-v", "-user", $User, "-password", $Password, "$BackupFile", $RestoreConnectionString) `
+    -ArgumentList @("-c", "-v", "-user", $fbUser, "-password", $fbPassword, "$BackupFile", $RestoreConnectionString) `
     -RedirectStandardOutput $gbakLog `
     -RedirectStandardError (Join-Path $bkDir "gbak_restore_stderr.log") `
     -NoNewWindow -PassThru

@@ -81,12 +81,12 @@ for ($year = $YearStart; $year -le $YearEnd; $year++) {
     for ($month = 1; $month -le 12; $month++) {
         $mm = $month.ToString("00")
         $lastDay = Get-LastDayOfMonth $year $month
-        $from = "$year-$mm-01"
-        $to = "$year-$mm-$lastDay"
+        $from = "${year}-${mm}-01"
+        $to = "${year}-${mm}-$lastDay"
 
         $baseSelect = "select fj.$CardCodeField from $MainTable fj join card c on c.code=fj.$CardCodeField where c.idorg=$IdOrg and fj.$DateField between '$from' and '$to'"
 
-        $lines.Add("select '$year-$mm: ', count(*) as to_delete from $MainTable fj join card c on c.code=fj.$CardCodeField where c.idorg=$IdOrg and fj.$DateField between '$from' and '$to';")
+        $lines.Add("select '${year}-${mm}: ', count(*) as to_delete from $MainTable fj join card c on c.code=fj.$CardCodeField where c.idorg=$IdOrg and fj.$DateField between '$from' and '$to';")
 
         if (-not $SkipCardJournalOperBlobCleanup) {
             $lines.Add("delete from cardjournaloperblob where code in (select j.code from cardjournaloper j where j.cardcode in ($baseSelect));")

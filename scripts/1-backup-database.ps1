@@ -21,9 +21,15 @@
 .PARAMETER ConnectionString
     Firebird connection string for the live database, e.g. "localhost/3050:C:\path\to\db.FDB".
 
-.PARAMETER User / -Password
-    Firebird credentials. Defaults to SYSDBA / masterkey, Firebird's well-known
-    default -- override these if the target database uses different credentials.
+.PARAMETER Credential
+    Firebird credentials as a PSCredential. If omitted, you'll be prompted
+    (username defaults to SYSDBA). NOTE: gbak.exe only accepts a plaintext
+    password as a command-line argument, so the password is necessarily
+    visible in this process's command line for its lifetime (e.g. to other
+    processes/tools that can enumerate process arguments on the same
+    machine) -- there is no way around that with gbak itself. Using
+    -Credential at least keeps the password out of your shell history and
+    off-screen when prompted.
 
 .PARAMETER AppServiceName
     Name of the Windows service to stop/start around the backup (the application
@@ -46,13 +52,18 @@ param(
     [Parameter(Mandatory = $true)] [string]$FirebirdBin,
     [Parameter(Mandatory = $true)] [string]$DatabasePath,
     [Parameter(Mandatory = $true)] [string]$ConnectionString,
-    [string]$User = "SYSDBA",
-    [string]$Password = "masterkey",
+    [System.Management.Automation.PSCredential]$Credential,
     [string]$AppServiceName = $null,
     [string]$BackupDir = $null
 )
 
 $ErrorActionPreference = "Stop"
+
+if (-not $Credential) {
+    $Credential = Get-Credential -UserName "SYSDBA" -Message "Firebird credentials for $ConnectionString"
+}
+$fbUser = $Credential.UserName
+$fbPassword = $Credential.GetNetworkCredential().Password
 
 if (-not $BackupDir) {
     $BackupDir = Join-Path (Split-Path $DatabasePath -Parent) "backup_$(Get-Date -Format yyyyMMdd_HHmmss)"
@@ -80,7 +91,7 @@ if ($AppServiceName) {
 
 Log "=== Starting gbak -b (verbose) -> $bkFile ==="
 $proc = Start-Process -FilePath (Join-Path $FirebirdBin "gbak.exe") `
-    -ArgumentList @("-b", "-v", "-user", $User, "-password", $Password, $ConnectionString, "$bkFile") `
+    -ArgumentList @("-b", "-v", "-user", $fbUser, "-password", $fbPassword, $ConnectionString, "$bkFile") `
     -RedirectStandardOutput $gbakLog `
     -RedirectStandardError (Join-Path $BackupDir "gbak_backup_stderr.log") `
     -NoNewWindow -PassThru

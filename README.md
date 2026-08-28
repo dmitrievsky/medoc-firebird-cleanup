@@ -135,15 +135,16 @@ delete from card where code in (
 commit;
 ```
 
-Generate and run it:
+Generate and run it (values below are illustrative placeholders, not real data —
+substitute your own form's `_main` table, date field, org code, and year range):
 
 ```powershell
-.\scripts\generate-batch-delete-sql.ps1 -MainTable fj1201002_main -DateField n11 `
-    -IdOrg 100 -YearStart 2019 -YearEnd 2020 -OutFile .\delete_2019_2020.sql
+.\scripts\generate-batch-delete-sql.ps1 -MainTable <form>_main -DateField <date_field> `
+    -IdOrg <your_idorg> -YearStart <year_from> -YearEnd <year_to> -OutFile .\delete.sql
 ```
 
 ```bash
-isql.exe -user SYSDBA -password masterkey "localhost/3050:C:\path\to\db.FDB" -i delete_2019_2020.sql -q > output.txt
+isql.exe -user SYSDBA -password <your_password> "localhost/3050:C:\path\to\db.FDB" -i delete.sql -q > output.txt
 ```
 
 **Verify afterwards**: sum the `to_delete` counts printed per month and compare
