@@ -1,5 +1,7 @@
 # Medoc / Firebird ZVIT.FDB cleanup toolkit
 
+**English** · [Українська](README.uk.md) · [Русский](README.ru.md)
+
 Tools and notes for shrinking a **Medoc (M.E.Doc)** accounting system's Firebird
 database (`ZVIT.FDB`) by purging old primary documents directly from the database,
 and for physically reclaiming the disk space that Firebird never gives back on its
